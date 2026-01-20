@@ -2,43 +2,47 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import ramai_engine as ramai  # Importing your modular brain
+import src.ramai_engine as ramai 
 
 st.set_page_config(page_title="PondGuard AI", layout="wide")
 
-st.title("🛡️ PondGuard Intelligence Dashboard")
-st.caption("Powered by RAMAI AI | Bhimavaram - Rajahmundry Hub")
+# --- SIDEBAR: FARMER REGISTRATION ---
+st.sidebar.header("👤 Farmer Profile")
+farmer_id = st.sidebar.text_input("Enter Farmer ID", "FG-001")
+pond_location = st.sidebar.selectbox("Pond Location", ["Bhimavaram", "Rajahmundry", "Other"])
 
-# Sidebar
-st.sidebar.header("📡 Sensor Inputs")
+# --- MAIN UI ---
+st.title(f"🛡️ PondGuard: {farmer_id}")
+st.caption(f"Active Monitoring at {pond_location}")
+
+# Sensor Sliders
 temp = st.sidebar.slider("Temp", 20.0, 40.0, 28.0)
 ph = st.sidebar.slider("pH", 0.0, 14.0, 7.5)
 do = st.sidebar.slider("Oxygen", 0.0, 10.0, 6.0)
 
-# Dashboard Columns
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("🤖 RAMAI Analysis")
+    st.subheader("🤖 RAMAI Advice")
     status, en_msg, te_msg, color = ramai.get_ramai_advice(temp, ph, do)
     
-    if color == "red": st.error(f"{status}: {te_msg}")
-    elif color == "orange": st.warning(f"{status}: {te_msg}")
-    else: st.success(f"{status}: {te_msg}")
+    # Display Alert
+    if color == "red": st.error(te_msg)
+    else: st.success(te_msg)
     
-    if st.button("📢 Play Voice Alert"):
+    if st.button("📢 Voice Alert"):
         ramai.play_voice(te_msg)
 
 with col2:
-    st.subheader("📊 Data Management")
-    if st.button("💾 Record Data to D: Drive"):
-        file_path = "D:/PondGuard_Project/pond_history.csv"
-        df = pd.DataFrame({"Timestamp": [datetime.now()], "Temp": [temp], "pH": [ph], "Oxygen": [do]})
+    st.subheader("📊 Data Logging")
+    if st.button("💾 Save to Cloud (D: Drive)"):
+        # We now save the Farmer ID and Location so we can filter data later
+        file_path = "D:/PondGuard_Project/data/pond_history.csv"
+        df = pd.DataFrame({
+            "Timestamp": [datetime.now()],
+            "Farmer_ID": [farmer_id],
+            "Location": [pond_location],
+            "Temp": [temp], "pH": [ph], "Oxygen": [do]
+        })
         df.to_csv(file_path, mode='a', index=False, header=not os.path.isfile(file_path))
-        st.toast("Data Logged!")
-
-# Show Graph
-if os.path.isfile("D:/PondGuard_Project/pond_history.csv"):
-    st.divider()
-    history = pd.read_csv("D:/PondGuard_Project/pond_history.csv")
-    st.line_chart(history.set_index("Timestamp")[["Oxygen", "pH"]])
+        st.toast(f"Data saved for {farmer_id}!")
